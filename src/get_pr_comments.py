@@ -1,13 +1,13 @@
 import requests
-import requests
 import json
 import os
 from tqdm import tqdm
-from time import sleep
 import argparse
+from src import util
 
 PER_PAGE = 100
 GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')
+COMMENTS_DIR = 'src/data/comments'
 
 headers = {
     'Authorization': 'Bearer ' + GITHUB_TOKEN,
@@ -15,26 +15,23 @@ headers = {
 }
 
 # Creating directory to store comment JSON files
-os.makedirs('comments', exist_ok=True)
-
+os.makedirs(COMMENTS_DIR, exist_ok=True)
 
 def get_comments_for_pr(user: str, repo: str, pr_number: int) -> list[dict]:
-    comments_url = f'https://api.github.com/repos/{user}/{repo}/pulls/{pr_number}/comments'
+    comments_url = util.get_pr_comments_url(user, repo, pr_number)
     response = requests.get(comments_url, headers=headers)
 
-    if response.status_code == 200:
-        comments = json.loads(response.text)
-    else:
-        raise Exception
-        comments = []
-
-    return comments
+    if response.status_code != 200:
+        raise util.build_response_exception(
+            response, f'Error occurred while fetching comments for PR #{pr_number}\n'
+        )
+    return json.loads(response.text)
 
 
 def get_prs(user: str, repo: str):
     page = 1
     while True:
-        pr_url = f'https://api.github.com/repos/{user}/{repo}/pulls?state=all&per_page={PER_PAGE}&page={page}'
+        pr_url = util.get_pr_url(user, repo, page)
         response = requests.get(pr_url, headers=headers)
 
         if response.status_code == 200:
@@ -47,12 +44,12 @@ def get_prs(user: str, repo: str):
                 print('-' * 50)
                 print(f'PR #{pr_number}')
 
-                file_path = f'comments/comments_{pr_number}.json'
+                file_path = f'{COMMENTS_DIR}/comments_{pr_number}.json'
                 # Check if comments file for the PR already exists
                 if os.path.exists(file_path):
                     continue
                 comments = get_comments_for_pr(user, repo, pr_number)
-                file_name = f'comments/comments_{pr_number}.json'
+                file_name = f'{COMMENTS_DIR}/comments_{pr_number}.json'
                 print(f'Writing comments to file: {file_name}')
                 with open(file_name, 'w') as f:
                     json.dump(comments, f)
@@ -60,12 +57,11 @@ def get_prs(user: str, repo: str):
 
             page += 1
         else:
-            raise Exception('Error occurred while fetching PRs.')
+            raise util.build_response_exception(
+                response, f'Error occurred while fetching PRs\n'
+            )
 
 
-def handle_rate_limit():
-    for _ in tqdm(range(60), desc="Sleeping"):
-        sleep(1)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -79,5 +75,5 @@ if __name__ == '__main__':
             break
         except Exception as e:
             print(f"Error: {str(e)}")
-            handle_rate_limit()
+            util.handle_rate_limit()
 

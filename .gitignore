@@ -95,4 +95,4 @@ dmypy.json
 .pyre/
 
 # Comments
-comments/*
+src/data/*
