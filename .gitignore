@@ -96,3 +96,5 @@ dmypy.json
 
 # Comments
 src/data/*
+.DS_STORE
+src/.DS_STORE
