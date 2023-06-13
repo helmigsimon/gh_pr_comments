@@ -94,7 +94,8 @@ dmypy.json
 # Pyre static type checker
 .pyre/
 
-# Comments
+# Repo-specific
 src/data/*
 .DS_STORE
 src/.DS_STORE
+Analysis.ipynb
